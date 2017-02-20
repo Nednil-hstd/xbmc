@@ -4651,7 +4651,12 @@ msgctxt "#2104"
 msgid "Check the log for more information."
 msgstr ""
 
-#empty strings from id 2105 to 9999
+#: system/settings/settings.xml
+msgctxt "#2105"
+msgid "Transcode Dolby Digital (AC3) to low bitrate"
+msgstr ""
+
+#empty strings from id 2106 to 9999
 
 #: xbmc/guilib/WindowIDs.h
 msgctxt "#10000"
@@ -19730,4 +19735,10 @@ msgstr ""
 #: view/GUIViewState.cpp
 msgctxt "#39010"
 msgid "Select sort method"
+msgstr ""
+
+#. Description of setting "ac3toac3transcode... with label #2105
+#: system/settings/settings.xml
+msgctxt "#39011"
+msgid "Set this option to transcode Dolby Digital (AC3) to a lower bitrate. Suitable for Philips and Sony Android TVs"
 msgstr ""

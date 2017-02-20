@@ -366,6 +366,7 @@ const std::string CSettings::SETTING_AUDIOOUTPUT_PASSTHROUGH = "audiooutput.pass
 const std::string CSettings::SETTING_AUDIOOUTPUT_PASSTHROUGHDEVICE = "audiooutput.passthroughdevice";
 const std::string CSettings::SETTING_AUDIOOUTPUT_AC3PASSTHROUGH = "audiooutput.ac3passthrough";
 const std::string CSettings::SETTING_AUDIOOUTPUT_AC3TRANSCODE = "audiooutput.ac3transcode";
+const std::string CSettings::SETTING_AUDIOOUTPUT_AC3TOAC3TRANSCODE = "audiooutput.ac3toac3transcode";
 const std::string CSettings::SETTING_AUDIOOUTPUT_EAC3PASSTHROUGH = "audiooutput.eac3passthrough";
 const std::string CSettings::SETTING_AUDIOOUTPUT_DTSPASSTHROUGH = "audiooutput.dtspassthrough";
 const std::string CSettings::SETTING_AUDIOOUTPUT_TRUEHDPASSTHROUGH = "audiooutput.truehdpassthrough";
@@ -1072,6 +1073,7 @@ void CSettings::InitializeISettingCallbacks()
   settingSet.insert(CSettings::SETTING_AUDIOOUTPUT_STEREOUPMIX);
   settingSet.insert(CSettings::SETTING_AUDIOOUTPUT_AC3PASSTHROUGH);
   settingSet.insert(CSettings::SETTING_AUDIOOUTPUT_AC3TRANSCODE);
+  settingSet.insert(CSettings::SETTING_AUDIOOUTPUT_AC3TOAC3TRANSCODE);
   settingSet.insert(CSettings::SETTING_AUDIOOUTPUT_EAC3PASSTHROUGH);
   settingSet.insert(CSettings::SETTING_AUDIOOUTPUT_DTSPASSTHROUGH);
   settingSet.insert(CSettings::SETTING_AUDIOOUTPUT_TRUEHDPASSTHROUGH);

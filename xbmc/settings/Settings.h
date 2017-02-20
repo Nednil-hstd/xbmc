@@ -323,6 +323,7 @@ public:
   static const std::string SETTING_AUDIOOUTPUT_PASSTHROUGHDEVICE;
   static const std::string SETTING_AUDIOOUTPUT_AC3PASSTHROUGH;
   static const std::string SETTING_AUDIOOUTPUT_AC3TRANSCODE;
+  static const std::string SETTING_AUDIOOUTPUT_AC3TOAC3TRANSCODE;
   static const std::string SETTING_AUDIOOUTPUT_EAC3PASSTHROUGH;
   static const std::string SETTING_AUDIOOUTPUT_DTSPASSTHROUGH;
   static const std::string SETTING_AUDIOOUTPUT_TRUEHDPASSTHROUGH;

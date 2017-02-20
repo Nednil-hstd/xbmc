@@ -2500,6 +2500,20 @@
           </dependencies>
           <control type="toggle" />
         </setting>
+       <setting id="audiooutput.ac3toac3transcode" type="boolean" parent="audiooutput.ac3transcode" label="2105" help="39011">
+          <level>2</level>
+          <default>false</default>
+          <dependencies>
+            <dependency type="enable" setting="audiooutput.ac3transcode" operator="is">true</dependency>
+	    <dependency type="visible">
+              <and>
+		<condition on="setting" setting="audiooutput.ac3transcode" operator="is">true</condition>
+		<condition on="setting" setting="audiooutput.ac3passthrough" operator="is">true</condition>
+              </and>
+	    </dependency>
+          </dependencies>
+          <control type="toggle" />
+        </setting>	
         <setting id="audiooutput.eac3passthrough" type="boolean" label="448" help="37016">
           <level>2</level>
           <default>false</default>

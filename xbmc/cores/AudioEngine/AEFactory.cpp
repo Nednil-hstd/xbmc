@@ -183,6 +183,9 @@ bool CAEFactory::SupportsRaw(AEAudioFormat &format)
   // check if the format is enabled in settings
   if (format.m_streamInfo.m_type == CAEStreamInfo::STREAM_TYPE_AC3 && !CSettings::GetInstance().GetBool(CSettings::SETTING_AUDIOOUTPUT_AC3PASSTHROUGH))
     return false;
+  //code for Philips android TV to transcode AC3 to AC3 with bitrate in AEDefines.h
+  if (format.m_streamInfo.m_type == CAEStreamInfo::STREAM_TYPE_AC3 && CSettings::GetInstance().GetBool(CSettings::SETTING_AUDIOOUTPUT_AC3TOAC3TRANSCODE))
+    return false;
   if (format.m_streamInfo.m_type == CAEStreamInfo::STREAM_TYPE_DTS_512 && !CSettings::GetInstance().GetBool(CSettings::SETTING_AUDIOOUTPUT_DTSPASSTHROUGH))
     return false;
   if (format.m_streamInfo.m_type == CAEStreamInfo::STREAM_TYPE_DTS_1024 && !CSettings::GetInstance().GetBool(CSettings::SETTING_AUDIOOUTPUT_DTSPASSTHROUGH))
