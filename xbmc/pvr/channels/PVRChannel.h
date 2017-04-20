@@ -20,7 +20,6 @@
  */
 
 #include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
-#include "epg/EpgTypes.h"
 #include "threads/CriticalSection.h"
 #include "utils/ISerializable.h"
 #include "utils/ISortable.h"
@@ -230,6 +229,21 @@ namespace PVR
     bool SetLastWatched(time_t iLastWatched);
 
     /*!
+     * @brief Sets the 'was playing on last app quit' flag for a channel.
+     * @param bSet True to set the flag, false to reset the flag
+     * @return True if the operation was successful, false otherwise
+     */
+    bool SetWasPlayingOnLastQuit(bool bSet);
+
+    /*!
+     * @brief Sets the 'was playing on last app quit' flag for a channel.
+     * @param bSet True to set the flag, false to reset the flag
+     * @param bWasPlaying on return contains the previous value of the flag
+     * @return True if the operation was successful, false otherwise
+     */
+    bool SetWasPlayingOnLastQuit(bool bSet, bool& bWasPlaying);
+
+    /*!
      * @brief True if this channel has no file or stream name
      * @return True if this channel has no file or stream name
      */
@@ -381,7 +395,7 @@ namespace PVR
      * @brief Get the EPG table for this channel.
      * @return The EPG for this channel.
      */
-    EPG::CEpgPtr GetEPG(void) const;
+    CPVREpgPtr GetEPG(void) const;
 
     /*!
      * @brief Get the EPG table for this channel.
@@ -404,7 +418,7 @@ namespace PVR
      *
      * @return The EPG tag that is active on this channel now.
      */
-    EPG::CEpgInfoTagPtr GetEPGNow() const;
+    CPVREpgInfoTagPtr GetEPGNow() const;
 
     /*!
      * @brief Get the EPG tag that is active on this channel next.
@@ -414,7 +428,7 @@ namespace PVR
      *
      * @return The EPG tag that is active on this channel next.
      */
-    EPG::CEpgInfoTagPtr GetEPGNext() const;
+    CPVREpgInfoTagPtr GetEPGNext() const;
 
     /*!
      * @return Don't use an EPG for this channel if set to false.

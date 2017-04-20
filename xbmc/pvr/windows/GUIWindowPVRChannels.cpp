@@ -18,9 +18,9 @@
  *
  */
 
+#include "GUIWindowPVRChannels.h"
 
 #include "GUIInfoManager.h"
-#include "epg/EpgContainer.h"
 #include "dialogs/GUIDialogContextMenu.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "dialogs/GUIDialogYesNo.h"
@@ -28,6 +28,7 @@
 #include "guilib/GUIRadioButtonControl.h"
 #include "guilib/GUIWindowManager.h"
 #include "input/Key.h"
+#include "ServiceBroker.h"
 #include "threads/SingleLock.h"
 #include "utils/StringUtils.h"
 #include "utils/Variant.h"
@@ -38,25 +39,23 @@
 #include "pvr/channels/PVRChannelGroupsContainer.h"
 #include "pvr/dialogs/GUIDialogPVRChannelManager.h"
 #include "pvr/dialogs/GUIDialogPVRGroupManager.h"
-
-#include "GUIWindowPVRChannels.h"
+#include "pvr/epg/EpgContainer.h"
 
 using namespace PVR;
-using namespace EPG;
 
 CGUIWindowPVRChannels::CGUIWindowPVRChannels(bool bRadio) :
   CGUIWindowPVRBase(bRadio, bRadio ? WINDOW_RADIO_CHANNELS : WINDOW_TV_CHANNELS, "MyPVRChannels.xml"),
   CPVRChannelNumberInputHandler(1000),
   m_bShowHiddenChannels(false)
 {
-  g_EpgContainer.RegisterObserver(this);
+  CServiceBroker::GetPVRManager().EpgContainer().RegisterObserver(this);
   g_infoManager.RegisterObserver(this);
 }
 
 CGUIWindowPVRChannels::~CGUIWindowPVRChannels()
 {
   g_infoManager.UnregisterObserver(this);
-  g_EpgContainer.UnregisterObserver(this);
+  CServiceBroker::GetPVRManager().EpgContainer().UnregisterObserver(this);
 }
 
 void CGUIWindowPVRChannels::GetContextButtons(int itemNumber, CContextButtons &buttons)
@@ -107,7 +106,7 @@ void CGUIWindowPVRChannels::UpdateButtons(void)
   CGUIRadioButtonControl *btnShowHidden = (CGUIRadioButtonControl*) GetControl(CONTROL_BTNSHOWHIDDEN);
   if (btnShowHidden)
   {
-    btnShowHidden->SetVisible(g_PVRChannelGroups->GetGroupAll(m_bRadio)->GetNumHiddenChannels() > 0);
+    btnShowHidden->SetVisible(CServiceBroker::GetPVRManager().ChannelGroups()->GetGroupAll(m_bRadio)->GetNumHiddenChannels() > 0);
     btnShowHidden->SetSelected(m_bShowHiddenChannels);
   }
 
@@ -153,13 +152,13 @@ bool CGUIWindowPVRChannels::OnMessage(CGUIMessage& message)
            case ACTION_SELECT_ITEM:
            case ACTION_MOUSE_LEFT_CLICK:
            case ACTION_PLAY:
-             CPVRGUIActions::GetInstance().SwitchToChannel(m_vecItems->Get(iItem), true);
+             CServiceBroker::GetPVRManager().GUIActions()->SwitchToChannel(m_vecItems->Get(iItem), true);
              break;
            case ACTION_SHOW_INFO:
-             CPVRGUIActions::GetInstance().ShowEPGInfo(m_vecItems->Get(iItem));
+             CServiceBroker::GetPVRManager().GUIActions()->ShowEPGInfo(m_vecItems->Get(iItem));
              break;
            case ACTION_DELETE_ITEM:
-             CPVRGUIActions::GetInstance().HideChannel(m_vecItems->Get(iItem));
+             CServiceBroker::GetPVRManager().GUIActions()->HideChannel(m_vecItems->Get(iItem));
              break;
            case ACTION_CONTEXT_MENU:
            case ACTION_MOUSE_RIGHT_CLICK:
@@ -269,7 +268,7 @@ void CGUIWindowPVRChannels::UpdateEpg(const CFileItemPtr &item)
                                         CVariant{channel->ChannelName()}))
     return;
 
-  const CEpgPtr epg = channel->GetEPG();
+  const CPVREpgPtr epg = channel->GetEPG();
   if (epg)
   {
     epg->ForceUpdate();
@@ -294,7 +293,7 @@ void CGUIWindowPVRChannels::UpdateEpg(const CFileItemPtr &item)
 
 void CGUIWindowPVRChannels::ShowChannelManager()
 {
-  CGUIDialogPVRChannelManager *dialog = (CGUIDialogPVRChannelManager *)g_windowManager.GetWindow(WINDOW_DIALOG_PVR_CHANNEL_MANAGER);
+  CGUIDialogPVRChannelManager *dialog = g_windowManager.GetWindow<CGUIDialogPVRChannelManager>();
   if (dialog)
     dialog->Open();
 }
@@ -302,7 +301,7 @@ void CGUIWindowPVRChannels::ShowChannelManager()
 void CGUIWindowPVRChannels::ShowGroupManager(void)
 {
   /* Load group manager dialog */
-  CGUIDialogPVRGroupManager* pDlgInfo = (CGUIDialogPVRGroupManager*)g_windowManager.GetWindow(WINDOW_DIALOG_PVR_GROUP_MANAGER);
+  CGUIDialogPVRGroupManager* pDlgInfo = g_windowManager.GetWindow<CGUIDialogPVRGroupManager>();
   if (!pDlgInfo)
     return;
 

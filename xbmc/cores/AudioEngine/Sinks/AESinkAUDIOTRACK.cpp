@@ -19,16 +19,17 @@
  */
 
 #include "AESinkAUDIOTRACK.h"
+
+#include <androidjni/AudioFormat.h>
+#include <androidjni/AudioManager.h>
+#include <androidjni/AudioTrack.h>
+#include <androidjni/Build.h>
+
 #include "cores/AudioEngine/Utils/AEUtil.h"
 #include "platform/android/activity/XBMCApp.h"
 #include "settings/Settings.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
-
-#include "platform/android/jni/AudioFormat.h"
-#include "platform/android/jni/AudioManager.h"
-#include "platform/android/jni/AudioTrack.h"
-#include "platform/android/jni/Build.h"
 #include "utils/TimeUtils.h"
 
 #include "utils/AMLUtils.h"
@@ -178,9 +179,10 @@ static int AEChannelMapToAUDIOTRACKChannelMask(CAEChannelInfo info)
   return atMask;
 }
 
-static jni::CJNIAudioTrack *CreateAudioTrack(int stream, int sampleRate, int channelMask, int encoding, int bufferSize)
+jni::CJNIAudioTrack *CAESinkAUDIOTRACK::CreateAudioTrack(int stream, int sampleRate, int channelMask, int encoding, int bufferSize)
 {
   jni::CJNIAudioTrack *jniAt = NULL;
+  m_jniAudioFormat = encoding;
 
   try
   {
@@ -199,6 +201,54 @@ static jni::CJNIAudioTrack *CreateAudioTrack(int stream, int sampleRate, int cha
   return jniAt;
 }
 
+int CAESinkAUDIOTRACK::AudioTrackWrite(char* audioData, int offsetInBytes, int sizeInBytes)
+{
+  int     written = 0;
+  if (CJNIBase::GetSDKVersion() >= 21 && m_jniAudioFormat == CJNIAudioFormat::ENCODING_PCM_FLOAT)
+  {
+    if (m_floatbuf.size() != (sizeInBytes - offsetInBytes) / sizeof(float))
+      m_floatbuf.resize((sizeInBytes - offsetInBytes) / sizeof(float));
+    memcpy(m_floatbuf.data(), audioData + offsetInBytes, sizeInBytes - offsetInBytes);
+    written = m_at_jni->write(m_floatbuf, 0, (sizeInBytes - offsetInBytes) / sizeof(float), CJNIAudioTrack::WRITE_BLOCKING);
+    written *= sizeof(float);
+  }
+  else if (m_jniAudioFormat == CJNIAudioFormat::ENCODING_IEC61937)
+  {
+    if (m_shortbuf.size() != (sizeInBytes - offsetInBytes) / sizeof(int16_t))
+      m_shortbuf.resize((sizeInBytes - offsetInBytes) / sizeof(int16_t));
+    memcpy(m_shortbuf.data(), audioData + offsetInBytes, sizeInBytes - offsetInBytes);
+    if (CJNIBase::GetSDKVersion() >= 23)
+      written = m_at_jni->write(m_shortbuf, 0, (sizeInBytes - offsetInBytes) / sizeof(int16_t), CJNIAudioTrack::WRITE_BLOCKING);
+    else
+      written = m_at_jni->write(m_shortbuf, 0, (sizeInBytes - offsetInBytes) / sizeof(int16_t));
+    written *= sizeof(uint16_t);
+  }
+  else
+  {
+    if (m_charbuf.size() != (sizeInBytes - offsetInBytes))
+      m_charbuf.resize(sizeInBytes - offsetInBytes);
+    memcpy(m_charbuf.data(), audioData + offsetInBytes, sizeInBytes - offsetInBytes);
+    if (CJNIBase::GetSDKVersion() >= 23)
+      written = m_at_jni->write(m_charbuf, 0, sizeInBytes - offsetInBytes, CJNIAudioTrack::WRITE_BLOCKING);
+    else
+      written = m_at_jni->write(m_charbuf, 0, sizeInBytes - offsetInBytes);
+  }
+  
+  return written;
+}
+
+int CAESinkAUDIOTRACK::AudioTrackWrite(char* audioData, int sizeInBytes, int64_t timestamp)
+{
+  int     written = 0;
+  std::vector<char> buf;
+  buf.reserve(sizeInBytes);
+  memcpy(buf.data(), audioData, sizeInBytes);
+
+  CJNIByteBuffer bytebuf = CJNIByteBuffer::wrap(buf);
+  written = m_at_jni->write(bytebuf.get_raw(), sizeInBytes, CJNIAudioTrack::WRITE_BLOCKING, timestamp);
+
+  return written;
+}
 
 CAEDeviceInfo CAESinkAUDIOTRACK::m_info;
 std::set<unsigned int> CAESinkAUDIOTRACK::m_sink_sampleRates;
@@ -245,7 +295,7 @@ bool CAESinkAUDIOTRACK::Initialize(AEAudioFormat &format, std::string &device)
   int stream = CJNIAudioManager::STREAM_MUSIC;
   m_encoding = CJNIAudioFormat::ENCODING_PCM_16BIT;
 
-  uint32_t distance = 192000; // max upper distance
+  uint32_t distance = UINT32_MAX; // max upper distance, update at least ones to use one of our samplerates
   for (auto& s : m_sink_sampleRates)
   {
      // prefer best match or alternatively something that divides nicely and
@@ -637,7 +687,7 @@ unsigned int CAESinkAUDIOTRACK::AddPackets(uint8_t **data, unsigned int frames, 
     int size_left = size;
     while (written < size)
     {
-      loop_written = m_at_jni->write((char*)out_buf, 0, size_left);
+      loop_written = AudioTrackWrite((char*)out_buf, 0, size_left);
       written += loop_written;
       size_left -= loop_written;
 
@@ -825,7 +875,7 @@ void CAESinkAUDIOTRACK::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
     else
     {
       bool supports_192khz = false;
-      int test_sample[] = { 32000, 44100, 48000, 96000, 192000 };
+      int test_sample[] = { 32000, 44100, 48000, 88200, 96000, 176400, 192000 };
       int test_sample_sz = sizeof(test_sample) / sizeof(int);
       int encoding = CJNIAudioFormat::ENCODING_PCM_16BIT;
       if (CJNIAudioManager::GetSDKVersion() >= 21)

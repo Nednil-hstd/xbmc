@@ -18,9 +18,11 @@
  *
  */
 
+#include "GUIWindowPVRSearch.h"
+
+#include "ServiceBroker.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogProgress.h"
-#include "epg/EpgContainer.h"
 #include "guilib/GUIWindowManager.h"
 #include "input/Key.h"
 #include "utils/URIUtils.h"
@@ -32,11 +34,9 @@
 #include "pvr/addons/PVRClients.h"
 #include "pvr/channels/PVRChannelGroupsContainer.h"
 #include "pvr/dialogs/GUIDialogPVRGuideSearch.h"
-
-#include "GUIWindowPVRSearch.h"
+#include "pvr/epg/EpgContainer.h"
 
 using namespace PVR;
-using namespace EPG;
 
 CGUIWindowPVRSearch::CGUIWindowPVRSearch(bool bRadio) :
   CGUIWindowPVRBase(bRadio, bRadio ? WINDOW_RADIO_SEARCH : WINDOW_TV_SEARCH, "MyPVRSearch.xml"),
@@ -74,7 +74,7 @@ void CGUIWindowPVRSearch::SetItemToSearch(const CFileItemPtr &item)
   }
   else
   {
-    const CEpgInfoTagPtr epgTag(CPVRItem(item).GetEpgInfoTag());
+    const CPVREpgInfoTagPtr epgTag(CPVRItem(item).GetEpgInfoTag());
     if (epgTag)
       m_searchfilter.SetSearchPhrase(epgTag->Title());
   }
@@ -94,7 +94,7 @@ void CGUIWindowPVRSearch::OnPrepareFileItems(CFileItemList &items)
     bAddSpecialSearchItem = true;
 
     items.Clear();
-    CGUIDialogProgress* dlgProgress = (CGUIDialogProgress*)g_windowManager.GetWindow(WINDOW_DIALOG_PROGRESS);
+    CGUIDialogProgress* dlgProgress = g_windowManager.GetWindow<CGUIDialogProgress>();
     if (dlgProgress)
     {
       dlgProgress->SetHeading(CVariant{194}); // "Searching..."
@@ -104,7 +104,7 @@ void CGUIWindowPVRSearch::OnPrepareFileItems(CFileItemList &items)
     }
 
     //! @todo should we limit the find similar search to the selected group?
-    g_EpgContainer.GetEPGSearch(items, m_searchfilter);
+    CServiceBroker::GetPVRManager().EpgContainer().GetEPGSearch(items, m_searchfilter);
 
     if (dlgProgress)
       dlgProgress->Close();
@@ -145,7 +145,7 @@ bool CGUIWindowPVRSearch::OnMessage(CGUIMessage &message)
             if (URIUtils::PathEquals(pItem->GetPath(), "pvr://guide/searchresults/search/"))
               OpenDialogSearch();
             else
-               CPVRGUIActions::GetInstance().ShowEPGInfo(pItem);
+               CServiceBroker::GetPVRManager().GUIActions()->ShowEPGInfo(pItem);
             return true;
           }
 
@@ -155,7 +155,7 @@ bool CGUIWindowPVRSearch::OnMessage(CGUIMessage &message)
             return true;
 
           case ACTION_RECORD:
-            CPVRGUIActions::GetInstance().ToggleTimer(pItem);
+            CServiceBroker::GetPVRManager().GUIActions()->ToggleTimer(pItem);
             return true;
         }
       }
@@ -184,7 +184,7 @@ bool CGUIWindowPVRSearch::OnContextButtonClear(CFileItem *item, CONTEXT_BUTTON b
 
 void CGUIWindowPVRSearch::OpenDialogSearch()
 {
-  CGUIDialogPVRGuideSearch* dlgSearch = (CGUIDialogPVRGuideSearch*)g_windowManager.GetWindow(WINDOW_DIALOG_PVR_GUIDE_SEARCH);
+  CGUIDialogPVRGuideSearch* dlgSearch = g_windowManager.GetWindow<CGUIDialogPVRGuideSearch>();
 
   if (!dlgSearch)
     return;

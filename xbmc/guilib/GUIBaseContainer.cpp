@@ -1304,7 +1304,7 @@ std::string CGUIBaseContainer::GetLabel(int info) const
         label = StringUtils::Format("%i", GetSelectedItem() + 1);
     }
     break;
-  case CONTAINER_ACTUAL_ITEMS:
+  case CONTAINER_NUM_ALL_ITEMS:
   case CONTAINER_NUM_ITEMS:
     {
       unsigned int numItems = GetNumItems();
@@ -1314,8 +1314,19 @@ std::string CGUIBaseContainer::GetLabel(int info) const
         label = StringUtils::Format("%u", numItems);
     }
     break;
+  case CONTAINER_NUM_NONFOLDER_ITEMS:
+    {
+      int numItems = 0;
+      for (auto item : m_items)
+      {
+        if (!item->m_bIsFolder)
+          numItems++;
+      }
+      label = StringUtils::Format("%u", numItems);
+    }
+    break;
   default:
-      break;
+    break;
   }
   return label;
 }

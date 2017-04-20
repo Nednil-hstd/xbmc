@@ -63,7 +63,6 @@
 #include "URL.h"
 #include "music/infoscanner/MusicInfoScanner.h"
 #include "guiinfo/GUIInfoLabels.h"
-#include "cores/AudioEngine/Engines/ActiveAE/AudioDSPAddons/ActiveAEDSP.h"
 #include "cores/IPlayer.h"
 #include "cores/playercorefactory/PlayerCoreFactory.h"
 #include "CueDocument.h"
@@ -145,7 +144,7 @@ bool CGUIWindowMusicBase::OnMessage(CGUIMessage& message)
 
   case GUI_MSG_WINDOW_INIT:
     {
-      m_dlgProgress = (CGUIDialogProgress*)g_windowManager.GetWindow(WINDOW_DIALOG_PROGRESS);
+      m_dlgProgress = g_windowManager.GetWindow<CGUIDialogProgress>();
 
       m_musicdatabase.Open();
 
@@ -413,7 +412,7 @@ void CGUIWindowMusicBase::ShowArtistInfo(const CFileItem *pItem, bool bShowInfo 
     if (m_dlgProgress)
       m_dlgProgress->Close();
 
-    CGUIDialogMusicInfo *pDlgArtistInfo = (CGUIDialogMusicInfo*)g_windowManager.GetWindow(WINDOW_DIALOG_MUSIC_INFO);
+    CGUIDialogMusicInfo *pDlgArtistInfo = g_windowManager.GetWindow<CGUIDialogMusicInfo>();
     if (pDlgArtistInfo)
     {
       pDlgArtistInfo->SetArtist(artist, artist.strPath);
@@ -495,7 +494,7 @@ bool CGUIWindowMusicBase::ShowAlbumInfo(const CFileItem *pItem, bool bShowInfo /
     if (m_dlgProgress)
       m_dlgProgress->Close();
 
-    CGUIDialogMusicInfo *pDlgAlbumInfo = (CGUIDialogMusicInfo*)g_windowManager.GetWindow(WINDOW_DIALOG_MUSIC_INFO);
+    CGUIDialogMusicInfo *pDlgAlbumInfo = g_windowManager.GetWindow<CGUIDialogMusicInfo>();
     if (pDlgAlbumInfo)
     {
       pDlgAlbumInfo->SetAlbum(album, album.strPath);
@@ -522,7 +521,7 @@ bool CGUIWindowMusicBase::ShowAlbumInfo(const CFileItem *pItem, bool bShowInfo /
 
 void CGUIWindowMusicBase::ShowSongInfo(CFileItem* pItem)
 {
-  CGUIDialogSongInfo *dialog = (CGUIDialogSongInfo *)g_windowManager.GetWindow(WINDOW_DIALOG_SONG_INFO);
+  CGUIDialogSongInfo *dialog = g_windowManager.GetWindow<CGUIDialogSongInfo>();
   if (dialog)
   {
     if (!pItem->IsMusicDb())
@@ -807,6 +806,12 @@ void CGUIWindowMusicBase::GetContextButtons(int itemNumber, CContextButtons &but
         {
             buttons.Add(CONTEXT_BUTTON_PLAY_PARTYMODE, 15216); // Play in Partymode
         }
+        if (item->IsAudioBook())
+        {
+          int bookmark;
+          if (m_musicdatabase.GetResumeBookmarkForAudioBook(item->GetPath(), bookmark) && bookmark > 0)
+            buttons.Add(CONTEXT_BUTTON_RESUME_ITEM, 39016);
+        }
 
         if (item->IsSmartPlayList() || m_vecItems->IsSmartPlayList())
           buttons.Add(CONTEXT_BUTTON_EDIT_SMART_PLAYLIST, 586);
@@ -846,8 +851,6 @@ void CGUIWindowMusicBase::GetContextButtons(int itemNumber, CContextButtons &but
 
 void CGUIWindowMusicBase::GetNonContextButtons(CContextButtons &buttons)
 {
-  if (CServiceBroker::GetADSP().IsProcessing())
-    buttons.Add(CONTEXT_BUTTON_ACTIVE_ADSP_SETTINGS, 15047);
 }
 
 bool CGUIWindowMusicBase::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
@@ -910,10 +913,6 @@ bool CGUIWindowMusicBase::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
     g_partyModeManager.Enable(PARTYMODECONTEXT_MUSIC, item->GetPath());
     return true;
 
-  case CONTEXT_BUTTON_ACTIVE_ADSP_SETTINGS:
-    g_windowManager.ActivateWindow(WINDOW_DIALOG_AUDIO_DSP_OSD_SETTINGS);
-    return true;
-
   case CONTEXT_BUTTON_RIP_CD:
     OnRipCD();
     return true;
@@ -936,6 +935,19 @@ bool CGUIWindowMusicBase::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
     if (m_musicdatabase.LookupCDDBInfo(true))
       Refresh();
     return true;
+
+  case CONTEXT_BUTTON_RESUME_ITEM: //audiobooks
+    {
+      Update(item->GetPath());
+      int bookmark;
+      m_musicdatabase.GetResumeBookmarkForAudioBook(item->GetPath(), bookmark);
+      int i=0;
+      while (i < m_vecItems->Size() && bookmark > m_vecItems->Get(i)->m_lEndOffset)
+        ++i;
+      CFileItem resItem(*m_vecItems->Get(i));
+      resItem.SetProperty("StartPercent", ((double)bookmark-resItem.m_lStartOffset)/(resItem.m_lEndOffset-resItem.m_lStartOffset)*100);
+      g_application.PlayFile(resItem, "", false);
+    }
 
   default:
     break;
@@ -1098,11 +1110,7 @@ bool CGUIWindowMusicBase::OnPlayMedia(int iItem, const std::string &player)
       OnQueueItem(iItem);
       return true;
     }
-    g_playlistPlayer.Reset();
-    g_playlistPlayer.ClearPlaylist(PLAYLIST_MUSIC);
-    g_playlistPlayer.Add(PLAYLIST_MUSIC, pItem);
-    g_playlistPlayer.SetCurrentPlaylist(PLAYLIST_MUSIC);
-    g_playlistPlayer.Play();
+    g_playlistPlayer.Play(pItem, player);
     return true;
   }
   return CGUIMediaWindow::OnPlayMedia(iItem, player);
@@ -1308,7 +1316,7 @@ void CGUIWindowMusicBase::OnInitWindow()
   CGUIMediaWindow::OnInitWindow();
   // Prompt for rescan of library to read music file tags that were not processed by previous versions
   // and accomodate any changes to the way some tags are processed
-  if (CMediaSettings::GetInstance().GetMusicNeedsUpdate() != 0)
+  if (m_musicdatabase.GetMusicNeedsTagScan() != 0)
   {
     if (g_infoManager.GetLibraryBool(LIBRARY_HAS_MUSIC) && !g_application.IsMusicScanning())
     {
@@ -1324,15 +1332,13 @@ void CGUIWindowMusicBase::OnInitWindow()
         if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_MUSICLIBRARY_BACKGROUNDUPDATE))
           flags |= CMusicInfoScanner::SCAN_BACKGROUND;
         g_application.StartMusicScan("", true, flags);
-        CMediaSettings::GetInstance().SetMusicNeedsUpdate(0); // once is enough (user may interrupt, but that's up to them)
-        CServiceBroker::GetSettings().Save();
+        m_musicdatabase.SetMusicTagScanVersion(); // once is enough (user may interrupt, but that's up to them)
       }
     }
     else
     {
       // no need to force a rescan if there's no music in the library or if a library scan is already active
-      CMediaSettings::GetInstance().SetMusicNeedsUpdate(0);
-      CServiceBroker::GetSettings().Save();
+      m_musicdatabase.SetMusicTagScanVersion();
     }
   }
 }
@@ -1396,7 +1402,7 @@ void CGUIWindowMusicBase::OnPrepareFileItems(CFileItemList &items)
 {
   CGUIMediaWindow::OnPrepareFileItems(items);
 
-  if (!items.IsMusicDb())
+  if (!items.IsMusicDb() && !items.IsSmartPlayList())
     RetrieveMusicInfo();
 }
 

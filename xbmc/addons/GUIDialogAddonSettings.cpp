@@ -209,7 +209,7 @@ bool CGUIDialogAddonSettings::ShowAndGetInput(const AddonPtr &addon, bool saveTo
   { 
     // Create the dialog
     CGUIDialogAddonSettings* pDialog = NULL;
-    pDialog = (CGUIDialogAddonSettings*) g_windowManager.GetWindow(WINDOW_DIALOG_ADDON_SETTINGS);
+    pDialog = g_windowManager.GetWindow<CGUIDialogAddonSettings>();
     if (!pDialog)
       return false;
 
@@ -307,7 +307,7 @@ bool CGUIDialogAddonSettings::ShowVirtualKeyboard(int iControl)
         }
         else if (type == "select")
         {
-          CGUIDialogSelect *pDlg = (CGUIDialogSelect*)g_windowManager.GetWindow(WINDOW_DIALOG_SELECT);
+          CGUIDialogSelect *pDlg = g_windowManager.GetWindow<CGUIDialogSelect>();
           if (pDlg)
           {
             pDlg->SetHeading(CVariant{label});
@@ -1038,6 +1038,12 @@ bool CGUIDialogAddonSettings::GetCondition(const std::string &condition, const i
           value = ((CGUISpinControlEx*) control2)->GetLabel();
         else
           value = StringUtils::Format("%i", ((CGUISpinControlEx*) control2)->GetValue());
+        break;
+      case CGUIControl::GUICONTROL_SETTINGS_SLIDER:
+        if (((CGUISettingsSliderControl *)control2)->GetType() == SLIDER_CONTROL_TYPE_INT)
+          value = StringUtils::Format("%i", ((CGUISettingsSliderControl *)control2)->GetIntValue());
+        else
+          value = StringUtils::Format("%f", ((CGUISettingsSliderControl *)control2)->GetFloatValue());
         break;
       default:
         break;

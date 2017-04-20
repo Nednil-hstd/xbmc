@@ -76,12 +76,16 @@ static std::string SerializeMetadata(const IAddon& addon)
     variant["extrainfo"].push_back(std::move(info));
   }
 
-  return CJSONVariantWriter::Write(variant, true);
+  std::string json;
+  CJSONVariantWriter::Write(variant, json, true);
+  return json;
 }
 
 static void DeserializeMetadata(const std::string& document, CAddonBuilder& builder)
 {
-  CVariant variant = CJSONVariantParser::Parse(document);
+  CVariant variant;
+  if (!CJSONVariantParser::Parse(document, variant))
+    return;
 
   builder.SetAuthor(variant["author"].asString());
   builder.SetDisclaimer(variant["disclaimer"].asString());
@@ -539,7 +543,6 @@ bool CAddonDatabase::GetAvailableVersions(const std::string& addonId,
         "WHERE "
         "repo.checksum IS NOT NULL AND repo.checksum != '' "
         "AND EXISTS (SELECT * FROM installed WHERE installed.addonID=repoID AND installed.enabled=1) "
-        "AND NOT EXISTS (SELECT * FROM  broken WHERE broken.addonID=addons.addonID) "
         "AND addons.addonID='%s'", addonId.c_str());
 
     m_pDS->query(sql.c_str());

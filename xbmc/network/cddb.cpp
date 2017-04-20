@@ -188,7 +188,7 @@ std::string Xcddb::Recv(bool wait4point)
 
   //##########################################################
   // Write captured data information to the xbmc log file
-  CLog::Log(LOGDEBUG,"Xcddb::Recv Captured %d bytes // Buffer= %" PRIdS" bytes. Captured data follows on next line\n%s", counter, str_buffer.size(),(char *)str_buffer.c_str());
+  CLog::Log(LOGDEBUG,"Xcddb::Recv Captured {0} bytes // Buffer= {1} bytes. Captured data follows on next line\n{2}", counter, str_buffer.size(),str_buffer.c_str());
 
 
   return str_buffer;
@@ -730,7 +730,7 @@ void Xcddb::addInexactListLine(int line_cnt, const char *line, int len)
 }
 
 //-------------------------------------------------------------------------------------------------------------------
-void Xcddb::setCDDBIpAdress(const std::string& ip_address)
+void Xcddb::setCDDBIpAddress(const std::string& ip_address)
 {
   m_cddb_ip_address = ip_address;
 }

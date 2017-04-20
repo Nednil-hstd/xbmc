@@ -44,9 +44,9 @@
 #include "CueDocument.h"
 #include "video/VideoDatabase.h"
 #include "music/MusicDatabase.h"
-#include "epg/Epg.h"
 #include "pvr/channels/PVRChannel.h"
 #include "pvr/channels/PVRRadioRDSInfoTag.h"
+#include "pvr/epg/Epg.h"
 #include "pvr/recordings/PVRRecording.h"
 #include "pvr/timers/PVRTimerInfoTag.h"
 #include "video/Bookmark.h"
@@ -73,7 +73,6 @@ using namespace XFILE;
 using namespace PLAYLIST;
 using namespace MUSIC_INFO;
 using namespace PVR;
-using namespace EPG;
 using namespace GAME;
 
 CFileItem::CFileItem(const CSong& song)
@@ -124,7 +123,7 @@ CFileItem::CFileItem(const CVideoInfoTag& movie)
   SetFromVideoInfoTag(movie);
 }
 
-CFileItem::CFileItem(const CEpgInfoTagPtr& tag)
+CFileItem::CFileItem(const CPVREpgInfoTagPtr& tag)
 {
   assert(tag.get());
 
@@ -151,7 +150,7 @@ CFileItem::CFileItem(const CPVRChannelPtr& channel)
 
   Initialize();
 
-  CEpgInfoTagPtr epgNow(channel->GetEPGNow());
+  CPVREpgInfoTagPtr epgNow(channel->GetEPGNow());
 
   m_strPath = channel->Path();
   m_bIsFolder = false;
@@ -751,7 +750,8 @@ bool CFileItem::Exists(bool bUseCache /* = true */) const
    || IsInternetStream()
    || IsParentFolder()
    || IsVirtualDirectoryRoot()
-   || IsPlugin())
+   || IsPlugin()
+   || IsPVR())
     return true;
 
   if (IsVideoDb() && HasVideoInfoTag())
@@ -911,6 +911,11 @@ bool CFileItem::IsDeleted() const
   return false;
 }
 
+bool CFileItem::IsAudioBook() const
+{
+  return IsType(".m4b") || IsType(".mka");
+}
+
 bool CFileItem::IsGame() const
 {
   if (HasGameInfoTag())
@@ -993,7 +998,7 @@ bool CFileItem::IsFileFolder(EFileFolderType types) const
     || IsZIP()
     || IsRAR()
     || IsRSS()
-    || IsType(".iso")
+    || IsAudioBook()
     || IsType(".ogg|.oga|.nsf|.sid|.sap|.xbt|.xsp")
 #if defined(TARGET_ANDROID)
     || IsType(".apk")
@@ -1262,7 +1267,6 @@ void CFileItem::FillInDefaultIcon()
   //   default picture for videos
   //   default picture for shortcuts
   //   default picture for playlists
-  //   or the icon embedded in an .xbe
   //
   // for folders
   //   for .. folders the default picture for parent folder

@@ -27,6 +27,7 @@ include(cmake/scripts/common/AddOptions.cmake)
 include(cmake/scripts/common/ArchSetup.cmake)
 include(cmake/scripts/common/Macros.cmake)
 include(cmake/scripts/common/ProjectMacros.cmake)
+core_find_versions()
 include(cmake/scripts/${CORE_SYSTEM_NAME}/PathSetup.cmake)
 include(ExternalProject)
 
@@ -40,7 +41,6 @@ set(CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS} -x assembler-with-cpp")
 option(VERBOSE            "Enable verbose output?" OFF)
 option(ENABLE_DVDCSS      "Enable libdvdcss support?" ON)
 option(ENABLE_UPNP        "Enable UPnP support?" ON)
-option(ENABLE_NONFREE     "Enable non-free components?" ON)
 option(ENABLE_AIRTUNES    "Enable AirTunes support?" ON)
 option(ENABLE_OPTICAL     "Enable optical support?" ON)
 option(ENABLE_PYTHON      "Enable python support?" ON)
@@ -50,7 +50,6 @@ if(UNIX)
   option(FFMPEG_PATH        "Path to external ffmpeg?" "")
   option(ENABLE_INTERNAL_CROSSGUID "Enable internal crossguid?" ON)
   option(ENABLE_OPENSSL     "Enable OpenSSL?" ON)
-  option(ENABLE_SDL         "Enable SDL?" OFF)
   option(ENABLE_MIR         "Enable MIR?" OFF)
   if(CORE_SYSTEM_NAME STREQUAL linux OR CORE_SYSTEM_NAME STREQUAL freebsd)
     option(ENABLE_X11         "Enable X11 support?" ON)
@@ -76,7 +75,6 @@ else()
 endif()
 
 core_find_git_rev(APP_SCMID FULL)
-core_find_versions()
 
 # Dynamically loaded libraries built with the project
 add_custom_target(${APP_NAME_LC}-libraries)
@@ -101,10 +99,21 @@ endif()
 find_package(Threads REQUIRED QUIET)
 list(APPEND DEPLIBS ${CMAKE_THREAD_LIBS_INIT})
 
-# Required dependencies
-set(required_deps Sqlite3 FreeType PCRE Cpluff LibDvd
-                  TinyXML Yajl Cdio
-                  Lzo2 Fribidi TagLib FFMPEG CrossGUID)
+# Required dependencies. Keep in alphabetical order please
+set(required_deps Cdio
+                  Cpluff
+                  CrossGUID
+                  FFMPEG
+                  Fmt
+                  FreeType
+                  FriBidi
+                  LibDvd
+                  Lzo2
+                  PCRE
+                  RapidJSON
+                  Sqlite3
+                  TagLib
+                  TinyXML)
 if(NOT WIN32)
   list(APPEND required_deps ZLIB)
 else()
@@ -114,16 +123,35 @@ if(CORE_SYSTEM_NAME STREQUAL android)
   list(APPEND required_deps Zip)
 endif()
 
-# Optional dependencies
-set(optional_deps MicroHttpd MySqlClient SSH XSLT
-                  Alsa UDEV DBus Avahi MDNS SmbClient CCache
-                  PulseAudio VDPAU VAAPI Bluetooth CAP Python)
+# Optional dependencies. Keep in alphabetical order please
+set(optional_deps Alsa
+                  Avahi
+                  Bluetooth
+                  CAP
+                  CCache
+                  DBus
+                  LCMS2
+                  MDNS
+                  MicroHttpd
+                  MySqlClient
+                  PulseAudio
+                  Python
+                  SmbClient
+                  SSH
+                  UDEV
+                  VAAPI
+                  VDPAU
+                  XSLT)
 
-# Required, dyloaded deps
-set(required_dyload Curl ASS)
+# Required, dyloaded deps. Keep in alphabetical order please
+set(required_dyload ASS
+                    Curl)
 
-# Optional, dyloaded deps
-set(dyload_optional CEC Bluray Plist NFS)
+# Optional, dyloaded deps. Keep in alphabetical order please
+set(dyload_optional Bluray
+                    CEC
+                    NFS
+                    Plist)
 
 # Required by shared objects we link
 set(required_dep_libs EXPAT)
@@ -165,10 +193,6 @@ if(ENABLE_UPNP)
   list(APPEND DEP_DEFINES "-DUSE_UPNP=1")
 endif()
 
-if(ENABLE_NONFREE)
-  list(APPEND DEP_DEFINES "-DHAVE_XBMC_NONFREE=1")
-endif()
-
 if(ENABLE_OPTICAL)
   list(APPEND DEP_DEFINES -DHAS_DVD_DRIVE)
 endif()
@@ -187,8 +211,6 @@ endif()
 
 if(CORE_SYSTEM_NAME STREQUAL osx)
   core_require_dep(Sdl)
-else()
-  core_optional_dep(Sdl)
 endif()
 
 if(NOT WIN32)
@@ -210,6 +232,7 @@ if(NOT WIN32)
         core_optional_dep(LibDRM ENABLE_MIR)
       else()
         core_optional_dep(X ENABLE_X11)
+        core_optional_dep(XRandR ENABLE_X11)
         core_optional_dep(LibDRM ENABLE_X11)
       endif()
     endif()
@@ -326,6 +349,7 @@ endif()
 # main binary
 if(NOT CORE_SYSTEM_NAME STREQUAL android)
   add_executable(${APP_NAME_LC} ${CORE_MAIN_SOURCE} "${RESOURCES}" ${OTHER_FILES})
+  set_target_properties(${APP_NAME_LC} PROPERTIES ENABLE_EXPORTS ON)
 else()
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined")
   add_library(${APP_NAME_LC} SHARED ${CORE_MAIN_SOURCE} "${RESOURCES}" ${OTHER_FILES})
@@ -444,10 +468,7 @@ endif()
 
 # Prepare add-on build env
 core_file_read_filtered(bindings ${CMAKE_SOURCE_DIR}/xbmc/addons/addon-bindings.mk)
-foreach(binding ${bindings})
-  string(REPLACE " =" ";" binding "${binding}")
-  string(REPLACE "+=" ";" binding "${binding}")
-  list(GET binding 1 header)
+foreach(header ${bindings})
   get_filename_component(file ${header} NAME)
   configure_file(${CMAKE_SOURCE_DIR}/${header} ${CORE_BUILD_DIR}/include/${APP_NAME_LC}/${file} COPYONLY)
 endforeach()

@@ -48,6 +48,7 @@
 #include "profiles/ProfilesManager.h"
 #include "profiles/dialogs/GUIDialogProfileSettings.h"
 #include "pvr/PVRManager.h"
+#include "ServiceBroker.h"
 #include "settings/Settings.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
@@ -151,7 +152,7 @@ bool CGUIWindowLoginScreen::OnAction(const CAction &action)
     std::string actionName = action.GetName();
     StringUtils::ToLower(actionName);
     if ((actionName.find("shutdown") != std::string::npos) &&
-        PVR::g_PVRManager.CanSystemPowerdown())
+        CServiceBroker::GetPVRManager().CanSystemPowerdown())
       CBuiltins::GetInstance().Execute(action.GetName());
     return true;
   }
@@ -215,7 +216,7 @@ void CGUIWindowLoginScreen::Update()
       strLabel = StringUtils::Format(g_localizeStrings.Get(20112).c_str(), profile->getDate().c_str());
     item->SetLabel2(strLabel);
     item->SetArt("thumb", profile->getThumb());
-    if (profile->getThumb().empty() || profile->getThumb() == "-")
+    if (profile->getThumb().empty())
       item->SetArt("thumb", "DefaultUser.png");
     item->SetLabelPreformatted(true);
     m_vecItems->Add(item);
@@ -280,9 +281,6 @@ void CGUIWindowLoginScreen::LoadProfile(unsigned int profile)
 
   // stop PVR related services
   CServiceBroker::GetPVRManager().Unload();
-
-  // stop audio DSP services with a blocking message
-  CServiceBroker::GetADSP().Deactivate();
 
   if (profile != 0 || !CProfilesManager::GetInstance().IsMasterProfile())
   {

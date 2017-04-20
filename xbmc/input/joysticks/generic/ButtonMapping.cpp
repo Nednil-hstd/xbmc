@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2014-2016 Team Kodi
+ *      Copyright (C) 2014-2017 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -282,7 +282,7 @@ CButtonMapping::CButtonMapping(IButtonMapper* buttonMapper, IButtonMap* buttonMa
       axisConfig.center = primitive.Center();
       axisConfig.range = primitive.Range();
 
-      GetAxis(primitive.Index(), primitive.Center(), axisConfig).SetEmitted(primitive);
+      GetAxis(primitive.Index(), static_cast<float>(primitive.Center()), axisConfig).SetEmitted(primitive);
     }
   }
 }

@@ -25,13 +25,9 @@ else()
   endif()
 endif()
 
-set(FFMPEG_OPTS --enable-cross-compile --cpu=cortex-a9 --arch=arm --target-os=linux --enable-neon
-                --disable-vdpau --cc=${CMAKE_C_COMPILER} --host-cc=${CMAKE_C_COMPILER}
-                --strip=${CMAKE_STRIP})
-set(ENABLE_SDL OFF CACHE BOOL "" FORCE)
 set(ENABLE_X11 OFF CACHE BOOL "" FORCE)
 set(ENABLE_AML OFF CACHE BOOL "" FORCE)
 set(ENABLE_OPTICAL OFF CACHE BOOL "" FORCE)
 set(ENABLE_MDNS OFF CACHE BOOL "" FORCE)
 
-list(APPEND DEPLIBS android log jnigraphics)
+list(APPEND DEPLIBS android log jnigraphics mediandk androidjni)

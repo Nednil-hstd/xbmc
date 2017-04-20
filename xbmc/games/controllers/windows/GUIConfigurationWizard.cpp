@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2014-2016 Team Kodi
+ *      Copyright (C) 2014-2017 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -30,6 +30,7 @@
 #include "peripherals/Peripherals.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
+#include "ServiceBroker.h"
 
 using namespace KODI;
 using namespace GAME;
@@ -295,31 +296,34 @@ bool CGUIConfigurationWizard::OnKeyPress(const CKey& key)
 
   bool bHandled = false;
 
-  switch (m_actionMap->GetActionID(key))
+  if (!m_bStop)
   {
-  case ACTION_MOVE_LEFT:
-  case ACTION_MOVE_RIGHT:
-  case ACTION_MOVE_UP:
-  case ACTION_MOVE_DOWN:
-  case ACTION_PAGE_UP:
-  case ACTION_PAGE_DOWN:
-    // Abort and allow motion
-    Abort(false);
-    bHandled = false;
-    break;
+    switch (m_actionMap->GetActionID(key))
+    {
+    case ACTION_MOVE_LEFT:
+    case ACTION_MOVE_RIGHT:
+    case ACTION_MOVE_UP:
+    case ACTION_MOVE_DOWN:
+    case ACTION_PAGE_UP:
+    case ACTION_PAGE_DOWN:
+      // Abort and allow motion
+      Abort(false);
+      bHandled = false;
+      break;
 
-  case ACTION_PARENT_DIR:
-  case ACTION_PREVIOUS_MENU:
-  case ACTION_STOP:
-    // Abort and prevent action
-    Abort(false);
-    bHandled = true;
-    break;
+    case ACTION_PARENT_DIR:
+    case ACTION_PREVIOUS_MENU:
+    case ACTION_STOP:
+      // Abort and prevent action
+      Abort(false);
+      bHandled = true;
+      break;
 
-  default:
-    // Absorb keypress
-    bHandled = true;
-    break;
+    default:
+      // Absorb keypress
+      bHandled = true;
+      break;
+    }
   }
 
   return bHandled;
@@ -332,10 +336,8 @@ bool CGUIConfigurationWizard::OnButtonPress(const std::string& button)
 
 void CGUIConfigurationWizard::InstallHooks(void)
 {
-  using namespace PERIPHERALS;
-
-  g_peripherals.RegisterJoystickButtonMapper(this);
-  g_peripherals.RegisterObserver(this);
+  CServiceBroker::GetPeripherals().RegisterJoystickButtonMapper(this);
+  CServiceBroker::GetPeripherals().RegisterObserver(this);
 
   // If we're not using emulation, allow keyboard input to abort prompt
   if (!m_bEmulation)
@@ -346,27 +348,23 @@ void CGUIConfigurationWizard::InstallHooks(void)
 
 void CGUIConfigurationWizard::RemoveHooks(void)
 {
-  using namespace PERIPHERALS;
-
   CInputManager::GetInstance().UnregisterMouseHandler(this);
 
   if (!m_bEmulation)
     CInputManager::GetInstance().UnregisterKeyboardHandler(this);
 
-  g_peripherals.UnregisterObserver(this);
-  g_peripherals.UnregisterJoystickButtonMapper(this);
+  CServiceBroker::GetPeripherals().UnregisterObserver(this);
+  CServiceBroker::GetPeripherals().UnregisterJoystickButtonMapper(this);
 }
 
 void CGUIConfigurationWizard::Notify(const Observable& obs, const ObservableMessage msg)
 {
-  using namespace PERIPHERALS;
-
   switch (msg)
   {
     case ObservableMessagePeripheralsChanged:
     {
-      g_peripherals.UnregisterJoystickButtonMapper(this);
-      g_peripherals.RegisterJoystickButtonMapper(this);
+      CServiceBroker::GetPeripherals().UnregisterJoystickButtonMapper(this);
+      CServiceBroker::GetPeripherals().RegisterJoystickButtonMapper(this);
       break;
     }
     default:
