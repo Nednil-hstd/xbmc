@@ -26,13 +26,14 @@
 #include "Util.h"
 #include "dialogs/GUIDialogExtendedProgressBar.h"
 #include "filesystem/Directory.h"
+#include "guilib/LocalizeStrings.h"
 #include "settings/AdvancedSettings.h"
-#include "settings/lib/Setting.h"
 #include "settings/Settings.h"
+#include "settings/lib/Setting.h"
 #include "threads/SingleLock.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
+#include "utils/log.h"
 
 #include "pvr/PVRDatabase.h"
 #include "pvr/PVRManager.h"
@@ -488,7 +489,7 @@ CFileItemPtr CPVRChannelGroup::GetByChannelNumber(unsigned int iChannelNumber, u
   return retval;
 }
 
-CFileItemPtr CPVRChannelGroup::GetByChannelUp(const CPVRChannelPtr &channel) const
+CFileItemPtr CPVRChannelGroup::GetNextChannel(const CPVRChannelPtr &channel) const
 {
   CFileItemPtr retval;
 
@@ -516,7 +517,7 @@ CFileItemPtr CPVRChannelGroup::GetByChannelUp(const CPVRChannelPtr &channel) con
   return retval;
 }
 
-CFileItemPtr CPVRChannelGroup::GetByChannelDown(const CPVRChannelPtr &channel) const
+CFileItemPtr CPVRChannelGroup::GetPreviousChannel(const CPVRChannelPtr &channel) const
 {
   CFileItemPtr retval;
 
@@ -588,7 +589,20 @@ int CPVRChannelGroup::LoadFromDb(bool bCompress /* = false */)
 
   int iChannelCount = Size();
 
-  database->Get(*this);
+  const CPVRChannelGroupPtr allGroup = CServiceBroker::GetPVRManager().ChannelGroups()->GetGroupAll(IsRadio());
+  if (!allGroup)
+    return -1;
+
+  std::map<int, CPVRChannelPtr> allChannels;
+  {
+    CSingleLock lock(allGroup->m_critSection);
+    for (const auto& groupMember : allGroup->m_members)
+    {
+      allChannels.insert(std::make_pair(groupMember.second.channel->ChannelID(), groupMember.second.channel));
+    }
+  }
+
+  database->Get(*this, allChannels);
 
   return Size() - iChannelCount;
 }
@@ -699,10 +713,6 @@ bool CPVRChannelGroup::UpdateGroupEntries(const CPVRChannelGroup &channels)
   bool bChanged(false);
   bool bRemoved(false);
 
-  const CPVRDatabasePtr database(CServiceBroker::GetPVRManager().GetTVDatabase());
-  if (!database)
-    return bReturn;
-
   CSingleLock lock(m_critSection);
   /* sort by client channel number if this is the first time or if pvrmanager.backendchannelorder is true */
   bool bUseBackendChannelNumbers(m_members.empty() || m_bUsingBackendChannelOrder);
@@ -716,12 +726,12 @@ bool CPVRChannelGroup::UpdateGroupEntries(const CPVRChannelGroup &channels)
        new channels were added at the back, so they'll get the highest numbers */
     bool bRenumbered = SortAndRenumber();
 
-    SetChanged();
-    lock.Leave();
-
-    NotifyObservers(HasNewChannels() || bRemoved || bRenumbered ? ObservableMessageChannelGroupReset : ObservableMessageChannelGroup);
-
     bReturn = Persist();
+
+    SetChanged();
+
+    lock.Leave();
+    NotifyObservers(HasNewChannels() || bRemoved || bRenumbered ? ObservableMessageChannelGroupReset : ObservableMessageChannelGroup);
   }
   else
   {
@@ -854,7 +864,6 @@ bool CPVRChannelGroup::Persist(void)
     CLog::Log(LOGDEBUG, "CPVRChannelGroup - %s - persisting channel group '%s' with %d channels",
         __FUNCTION__, GroupName().c_str(), (int) m_members.size());
     m_bChanged = false;
-    lock.Leave();
 
     bReturn = database->Persist(*this);
   }
@@ -957,7 +966,7 @@ bool CPVRChannelGroup::HasChanges(void) const
   return m_bChanged || HasNewChannels() || HasChangedChannels();
 }
 
-void CPVRChannelGroup::OnSettingChanged(const CSetting *setting)
+void CPVRChannelGroup::OnSettingChanged(std::shared_ptr<const CSetting> setting)
 {
   if (setting == NULL)
     return;
@@ -980,7 +989,6 @@ void CPVRChannelGroup::OnSettingChanged(const CSetting *setting)
 
     m_bUsingBackendChannelOrder   = bUsingBackendChannelOrder;
     m_bUsingBackendChannelNumbers = bUsingBackendChannelNumbers;
-    lock.Leave();
 
     /* check whether this channel group has to be renumbered */
     if (bChannelOrderChanged || bChannelNumbersChanged)
@@ -991,11 +999,6 @@ void CPVRChannelGroup::OnSettingChanged(const CSetting *setting)
       Persist();
     }
   }
-}
-
-bool CPVRPersistGroupJob::DoWork(void)
-{
-  return m_group->Persist();
 }
 
 int CPVRChannelGroup::GetEPGNowOrNext(CFileItemList &results, bool bGetNext) const
@@ -1052,7 +1055,7 @@ int CPVRChannelGroup::GetEPGAll(CFileItemList &results, bool bIncludeChannelsWit
       {
         // Add dummy EPG tag associated with this channel
         epgTag = CPVREpgInfoTag::CreateDefaultTag();
-        epgTag->SetPVRChannel(channel);
+        epgTag->SetChannel(channel);
         results.Add(CFileItemPtr(new CFileItem(epgTag)));
       }
     }
@@ -1147,7 +1150,6 @@ bool CPVRChannelGroup::SetLastWatched(time_t iLastWatched)
   if (m_iLastWatched != iLastWatched)
   {
     m_iLastWatched = iLastWatched;
-    lock.Leave();
 
     /* update the database immediately */
     if (database)
@@ -1169,7 +1171,7 @@ void CPVRChannelGroup::SetPreventSortAndRenumber(bool bPreventSortAndRenumber /*
   m_bPreventSortAndRenumber = bPreventSortAndRenumber;
 }
 
-bool CPVRChannelGroup::UpdateChannel(const CFileItem &item, bool bHidden, bool bEPGEnabled, bool bParentalLocked, int iEPGSource, int iChannelNumber, const std::string &strChannelName, const std::string &strIconPath, const std::string &strStreamURL, bool bUserSetIcon)
+bool CPVRChannelGroup::UpdateChannel(const CFileItem &item, bool bHidden, bool bEPGEnabled, bool bParentalLocked, int iEPGSource, int iChannelNumber, const std::string &strChannelName, const std::string &strIconPath, bool bUserSetIcon)
 {
   if (!item.HasPVRChannelInfoTag())
     return false;

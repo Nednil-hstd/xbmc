@@ -20,6 +20,7 @@
  */
 
 #include "XBDateTime.h"
+
 #include "pvr/PVRTypes.h"
 
 class CFileItemList;
@@ -79,7 +80,7 @@ namespace PVR
     const CDateTime &GetStartDateTime() const { return m_startDateTime; }
     void SetStartDateTime(const CDateTime &startDateTime) { m_startDateTime = startDateTime; }
 
-    const CDateTime &GetEndDateTime() const { return m_endDateTime; }
+    const CDateTime &GetEndDateTime() const  { return m_endDateTime; }
     void SetEndDateTime(const CDateTime &endDateTime) { m_endDateTime = endDateTime; }
 
     bool ShouldIncludeUnknownGenres() const { return m_bIncludeUnknownGenres; }

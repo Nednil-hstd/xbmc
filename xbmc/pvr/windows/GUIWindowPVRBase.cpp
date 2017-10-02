@@ -20,19 +20,19 @@
 
 #include "GUIWindowPVRBase.h"
 
+#include "GUIUserMessages.h"
 #include "ServiceBroker.h"
 #include "addons/AddonManager.h"
 #include "dialogs/GUIDialogExtendedProgressBar.h"
-#include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogSelect.h"
-#include "GUIUserMessages.h"
 #include "guilib/GUIMessage.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
 #include "input/Key.h"
 #include "messaging/ApplicationMessenger.h"
-#include "ServiceBroker.h"
-#include "utils/log.h"
+#include "messaging/helpers/DialogOKHelper.h"
 #include "utils/Variant.h"
+#include "utils/log.h"
 
 #include "pvr/PVRGUIActions.h"
 #include "pvr/PVRManager.h"
@@ -253,9 +253,9 @@ void CGUIWindowPVRBase::SetInvalid()
 bool CGUIWindowPVRBase::CanBeActivated() const
 {
   // check if there is at least one enabled PVR add-on
-  if (!ADDON::CAddonMgr::GetInstance().HasAddons(ADDON::ADDON_PVRDLL))
+  if (!CServiceBroker::GetAddonMgr().HasAddons(ADDON::ADDON_PVRDLL))
   {
-    CGUIDialogOK::ShowAndGetInput(CVariant{19296}, CVariant{19272}); // No PVR add-on enabled, You need a tuner, backend software...
+    HELPERS::ShowOKDialogText(CVariant{19296}, CVariant{19272}); // No PVR add-on enabled, You need a tuner, backend software...
     return false;
   }
 
@@ -264,7 +264,7 @@ bool CGUIWindowPVRBase::CanBeActivated() const
 
 bool CGUIWindowPVRBase::OpenChannelGroupSelectionDialog(void)
 {
-  CGUIDialogSelect *dialog = g_windowManager.GetWindow<CGUIDialogSelect>();
+  CGUIDialogSelect *dialog = g_windowManager.GetWindow<CGUIDialogSelect>(WINDOW_DIALOG_SELECT);
   if (!dialog)
     return false;
 
@@ -382,7 +382,7 @@ void CGUIWindowPVRBase::ShowProgressDialog(const std::string &strText, int iProg
 {
   if (!m_progressHandle)
   {
-    CGUIDialogExtendedProgressBar *loadingProgressDialog = g_windowManager.GetWindow<CGUIDialogExtendedProgressBar>();
+    CGUIDialogExtendedProgressBar *loadingProgressDialog = g_windowManager.GetWindow<CGUIDialogExtendedProgressBar>(WINDOW_DIALOG_EXT_PROGRESS);
     if (!loadingProgressDialog)
     {
       CLog::Log(LOGERROR, "CGUIWindowPVRBase - %s - unable to get WINDOW_DIALOG_EXT_PROGRESS!", __FUNCTION__);
