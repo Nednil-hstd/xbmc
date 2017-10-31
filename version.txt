@@ -7,5 +7,7 @@ VERSION_TAG RC1
 VERSION_CODE 1745901
 ADDON_API 17.5.901
 
+APP_PACKAGE org.xbmc.kodi
+
 # Notes:
 # Change AC_INIT in configure.ac
